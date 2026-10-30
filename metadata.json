@@ -1,0 +1,6 @@
+{
+  "name": "TaskFlow",
+  "description": "iOS Glassmorphic ToDo & Task Management App with drag & drop, light/dark themes, Room local storage, and JSON backup export/import.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
