@@ -34,9 +34,13 @@ fun CategoryCreatorDialog(
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     Dialog(onDismissRequest = onDismiss) {
+        val isDark = MaterialTheme.colorScheme.background.red < 0.2f
+        val dialogBg = if (isDark) androidx.compose.ui.graphics.Color(0xFF1E293B) else androidx.compose.ui.graphics.Color(0xFFFFFFFF)
+
         GlassCard(
             cornerRadius = 24.dp,
             elevation = 16.dp,
+            backgroundColor = dialogBg,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp)

@@ -1,6 +1,6 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -42,7 +42,11 @@ fun AnalyticsScreen(
     val doneCount = allTasks.count { it.task.status == TaskStatus.DONE }
 
     val completionRate = if (totalTasks > 0) doneCount.toFloat() / totalTasks.toFloat() else 0f
-    val animatedCompletionRate by animateFloatAsState(targetValue = completionRate, label = "completionRate")
+    val animatedCompletionRate by animateFloatAsState(
+        targetValue = completionRate,
+        animationSpec = tween(700, easing = FastOutSlowInEasing),
+        label = "completionRate"
+    )
 
     LazyColumn(
         modifier = modifier
@@ -50,7 +54,7 @@ fun AnalyticsScreen(
             .padding(horizontal = 16.dp)
             .testTag("analytics_screen"),
         verticalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(top = 12.dp, bottom = 80.dp)
+        contentPadding = PaddingValues(top = 12.dp, bottom = 130.dp)
     ) {
         // Hero Progress Card
         item {

@@ -1,9 +1,8 @@
 package com.example.ui.screens
 
 import android.text.format.DateFormat
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -19,9 +18,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.model.TaskWithSubTasks
 import com.example.ui.components.BulkActionBar
@@ -132,99 +134,152 @@ fun MainScreen(
                 }
             }
 
-            // Main Active Content
+            // Main Active Content with Smooth Slide & Fade Transition
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                when (activeTab) {
-                    0 -> TaskBoardScreen(
-                        viewModel = viewModel,
-                        allTasks = filteredTasks,
-                        onOpenTaskDialog = { taskWithSubs ->
-                            editingTaskWithSubTasks = taskWithSubs
-                            isShowTaskDialog = true
+                AnimatedContent(
+                    targetState = activeTab,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            (slideInHorizontally(
+                                animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
+                                initialOffsetX = { fullWidth -> (fullWidth * 0.15f).toInt() }
+                            ) + fadeIn(animationSpec = tween(220))).togetherWith(
+                                slideOutHorizontally(
+                                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
+                                    targetOffsetX = { fullWidth -> -(fullWidth * 0.15f).toInt() }
+                                ) + fadeOut(animationSpec = tween(180))
+                            )
+                        } else {
+                            (slideInHorizontally(
+                                animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
+                                initialOffsetX = { fullWidth -> -(fullWidth * 0.15f).toInt() }
+                            ) + fadeIn(animationSpec = tween(220))).togetherWith(
+                                slideOutHorizontally(
+                                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
+                                    targetOffsetX = { fullWidth -> (fullWidth * 0.15f).toInt() }
+                                ) + fadeOut(animationSpec = tween(180))
+                            )
                         }
-                    )
-                    1 -> TaskListScreen(
-                        viewModel = viewModel,
-                        tasks = filteredTasks,
-                        onOpenTaskDialog = { taskWithSubs ->
-                            editingTaskWithSubTasks = taskWithSubs
-                            isShowTaskDialog = true
-                        }
-                    )
-                    2 -> FocusTimerScreen(
-                        viewModel = viewModel,
-                        allTasks = allTasks
-                    )
-                    3 -> AnalyticsScreen(
-                        viewModel = viewModel,
-                        allTasks = allTasks
-                    )
-                    4 -> SettingsScreen(
-                        viewModel = viewModel
-                    )
+                    },
+                    label = "screen_tab_transition",
+                    modifier = Modifier.fillMaxSize()
+                ) { tab ->
+                    when (tab) {
+                        0 -> TaskBoardScreen(
+                            viewModel = viewModel,
+                            allTasks = filteredTasks,
+                            onOpenTaskDialog = { taskWithSubs ->
+                                editingTaskWithSubTasks = taskWithSubs
+                                isShowTaskDialog = true
+                            }
+                        )
+                        1 -> TaskListScreen(
+                            viewModel = viewModel,
+                            tasks = filteredTasks,
+                            onOpenTaskDialog = { taskWithSubs ->
+                                editingTaskWithSubTasks = taskWithSubs
+                                isShowTaskDialog = true
+                            }
+                        )
+                        2 -> FocusTimerScreen(
+                            viewModel = viewModel,
+                            allTasks = allTasks
+                        )
+                        3 -> AnalyticsScreen(
+                            viewModel = viewModel,
+                            allTasks = allTasks
+                        )
+                        4 -> SettingsScreen(
+                            viewModel = viewModel
+                        )
+                    }
                 }
             }
         }
 
-        if (isMultiSelectMode) {
-            // Floating Bulk Action Bar
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
-            ) {
-                BulkActionBar(
-                    selectedCount = selectedTaskIds.size,
-                    onSelectAll = { viewModel.selectAllTasks(filteredTasks.map { it.task.id }) },
-                    onClearSelection = { viewModel.clearTaskSelection() },
-                    onBulkDelete = { viewModel.bulkDeleteSelected() },
-                    onBulkMarkStatus = { status -> viewModel.bulkMarkStatus(status) },
-                    onBulkTogglePin = { viewModel.bulkTogglePin(true) }
-                )
-            }
-        } else {
-            // Floating Action Button (+ Add Task)
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(end = 20.dp, bottom = 96.dp)
-            ) {
-                FloatingActionButton(
-                    onClick = {
-                        editingTaskWithSubTasks = null
-                        isShowTaskDialog = true
-                    },
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
-                    shape = CircleShape,
-                    elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 8.dp),
-                    modifier = Modifier.testTag("fab_add_task")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "Add Task",
-                        modifier = Modifier.size(28.dp)
-                    )
-                }
-            }
+        // Animated Multi-Select Bulk Action Bar
+        AnimatedVisibility(
+            visible = isMultiSelectMode,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(animationSpec = tween(200)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(180)
+            ) + fadeOut(animationSpec = tween(150)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
+        ) {
+            BulkActionBar(
+                selectedCount = selectedTaskIds.size,
+                onSelectAll = { viewModel.selectAllTasks(filteredTasks.map { it.task.id }) },
+                onClearSelection = { viewModel.clearTaskSelection() },
+                onBulkDelete = { viewModel.bulkDeleteSelected() },
+                onBulkMarkStatus = { status -> viewModel.bulkMarkStatus(status) },
+                onBulkTogglePin = { viewModel.bulkTogglePin(true) }
+            )
+        }
 
-            // Bottom Glass Navigation Bar
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+        // Floating Action Button (+ Add Task) with Smooth Pop Animation
+        AnimatedVisibility(
+            visible = !isMultiSelectMode,
+            enter = scaleIn(
+                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(animationSpec = tween(200)),
+            exit = scaleOut(animationSpec = tween(150)) + fadeOut(animationSpec = tween(150)),
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 20.dp, bottom = 96.dp)
+        ) {
+            FloatingActionButton(
+                onClick = {
+                    editingTaskWithSubTasks = null
+                    isShowTaskDialog = true
+                },
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = CircleShape,
+                elevation = FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 8.dp,
+                    pressedElevation = 14.dp
+                ),
+                modifier = Modifier.testTag("fab_add_task")
             ) {
-                GlassNavigationBar(
-                    activeTab = activeTab,
-                    onTabSelected = { viewModel.setActiveTab(it) }
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Add Task",
+                    modifier = Modifier.size(28.dp)
                 )
             }
+        }
+
+        // Bottom Glass Navigation Bar with Smooth Appearance
+        AnimatedVisibility(
+            visible = !isMultiSelectMode,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)
+            ) + fadeIn(animationSpec = tween(200)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(180)
+            ) + fadeOut(animationSpec = tween(150)),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .windowInsetsPadding(WindowInsets.navigationBars)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            GlassNavigationBar(
+                activeTab = activeTab,
+                onTabSelected = { viewModel.setActiveTab(it) }
+            )
         }
     }
 }
@@ -235,21 +290,22 @@ private fun GlassNavigationBar(
     onTabSelected: (Int) -> Unit
 ) {
     val isDark = MaterialTheme.colorScheme.background.red < 0.2f
-    val navBg = if (isDark) GlassDarkCardBg else GlassLightCardBg
-    val navBorder = if (isDark) GlassDarkCardBorder else GlassLightCardBorder
+    // Frosted high-opacity background so cards and lists behind do not bleed through
+    val navBg = if (isDark) Color(0xF21E293B) else Color(0xF6FFFFFF)
+    val navBorder = if (isDark) GlassDarkCardBorder else Color(0x66FFFFFF)
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(12.dp, RoundedCornerShape(28.dp))
-            .clip(RoundedCornerShape(28.dp))
+            .shadow(16.dp, RoundedCornerShape(26.dp))
+            .clip(RoundedCornerShape(26.dp))
             .background(navBg)
-            .border(1.dp, navBorder, RoundedCornerShape(28.dp))
-            .padding(horizontal = 4.dp, vertical = 6.dp)
+            .border(1.dp, navBorder, RoundedCornerShape(26.dp))
+            .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceAround,
+            horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
             NavItem(
@@ -257,35 +313,40 @@ private fun GlassNavigationBar(
                 label = "Board",
                 isSelected = activeTab == 0,
                 onClick = { onTabSelected(0) },
-                testTag = "nav_board"
+                testTag = "nav_board",
+                modifier = Modifier.weight(1f)
             )
             NavItem(
                 icon = Icons.Default.FormatListBulleted,
                 label = "List",
                 isSelected = activeTab == 1,
                 onClick = { onTabSelected(1) },
-                testTag = "nav_list"
+                testTag = "nav_list",
+                modifier = Modifier.weight(1f)
             )
             NavItem(
                 icon = Icons.Default.Timer,
                 label = "Focus",
                 isSelected = activeTab == 2,
                 onClick = { onTabSelected(2) },
-                testTag = "nav_focus"
+                testTag = "nav_focus",
+                modifier = Modifier.weight(1f)
             )
             NavItem(
                 icon = Icons.Default.PieChart,
                 label = "Analytics",
                 isSelected = activeTab == 3,
                 onClick = { onTabSelected(3) },
-                testTag = "nav_analytics"
+                testTag = "nav_analytics",
+                modifier = Modifier.weight(1f)
             )
             NavItem(
                 icon = Icons.Default.Settings,
                 label = "Settings",
                 isSelected = activeTab == 4,
                 onClick = { onTabSelected(4) },
-                testTag = "nav_settings"
+                testTag = "nav_settings",
+                modifier = Modifier.weight(1f)
             )
         }
     }
@@ -297,41 +358,70 @@ private fun NavItem(
     label: String,
     isSelected: Boolean,
     onClick: () -> Unit,
-    testTag: String
+    testTag: String,
+    modifier: Modifier = Modifier
 ) {
     val activeColor = MaterialTheme.colorScheme.primary
     val inactiveColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
 
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier
-            .clip(CircleShape)
-            .then(
-                if (isSelected) Modifier.background(activeColor.copy(alpha = 0.18f))
-                else Modifier
-            )
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-            .testTag(testTag)
+    // Animated spring bounce for icon
+    val iconScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.15f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "navIconScale"
+    )
+
+    // Smooth color animation for tint and text
+    val itemColor by animateColorAsState(
+        targetValue = if (isSelected) activeColor else inactiveColor,
+        animationSpec = tween(durationMillis = 200),
+        label = "navColor"
+    )
+
+    // Smooth pill background fade
+    val pillAlpha by animateFloatAsState(
+        targetValue = if (isSelected) 0.16f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "navPillAlpha"
+    )
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(activeColor.copy(alpha = pillAlpha))
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp, horizontal = 4.dp)
+            .testTag(testTag),
+        contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
-                tint = if (isSelected) activeColor else inactiveColor,
-                modifier = Modifier.size(20.dp)
+                tint = itemColor,
+                modifier = Modifier
+                    .size(22.dp)
+                    .graphicsLayer {
+                        scaleX = iconScale
+                        scaleY = iconScale
+                    }
             )
-            AnimatedVisibility(
-                visible = isSelected,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = activeColor
-                )
-            }
+            Spacer(modifier = Modifier.height(3.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                ),
+                color = itemColor,
+                maxLines = 1
+            )
         }
     }
 }

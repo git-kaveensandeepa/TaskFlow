@@ -2,7 +2,8 @@ package com.example.ui.components
 
 import android.text.format.DateFormat
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -53,11 +55,40 @@ fun TaskCard(
     val completedSubCount = subTasks.count { it.isCompleted }
     val totalSubCount = subTasks.size
     val subProgress = if (totalSubCount > 0) completedSubCount.toFloat() / totalSubCount.toFloat() else 0f
-    val animatedProgress by animateFloatAsState(targetValue = subProgress, label = "subProgress")
+    val animatedProgress by animateFloatAsState(
+        targetValue = subProgress,
+        animationSpec = tween(400, easing = FastOutSlowInEasing),
+        label = "subProgress"
+    )
+
+    // Smooth completion opacity transition
+    val cardAlpha by animateFloatAsState(
+        targetValue = if (isDone) 0.68f else 1f,
+        animationSpec = tween(durationMillis = 250),
+        label = "cardAlpha"
+    )
+
+    // Spring scale bounce on checkmark toggle
+    val checkmarkScale by animateFloatAsState(
+        targetValue = if (isDone) 1.15f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "checkScale"
+    )
+
+    // Smooth checkmark tint transition
+    val checkmarkTint by animateColorAsState(
+        targetValue = if (isDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+        animationSpec = tween(durationMillis = 200),
+        label = "checkTint"
+    )
 
     GlassCard(
         modifier = modifier
             .fillMaxWidth()
+            .graphicsLayer { alpha = cardAlpha }
             .testTag("task_card_${task.id}"),
         onClick = if (isMultiSelectMode && onToggleSelect != null) onToggleSelect else onClickTask,
         elevation = if (isDragging) 12.dp else 4.dp
@@ -210,8 +241,13 @@ fun TaskCard(
                     Icon(
                         imageVector = if (isDone) Icons.Outlined.CheckCircle else Icons.Outlined.Circle,
                         contentDescription = if (isDone) "Mark as incomplete" else "Mark as done",
-                        tint = if (isDone) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp)
+                        tint = checkmarkTint,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .graphicsLayer {
+                                scaleX = checkmarkScale
+                                scaleY = checkmarkScale
+                            }
                     )
                 }
 

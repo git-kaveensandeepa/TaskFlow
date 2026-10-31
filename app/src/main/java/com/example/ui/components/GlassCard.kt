@@ -32,12 +32,13 @@ fun GlassCard(
     cornerRadius: Dp = 20.dp,
     borderWidth: Dp = 1.dp,
     elevation: Dp = 4.dp,
+    backgroundColor: Color? = null,
     onClick: (() -> Unit)? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     val isDark = MaterialTheme.colorScheme.background.red < 0.2f
 
-    val backgroundColor = if (isDark) GlassDarkCardBg else GlassLightCardBg
+    val effectiveBg = backgroundColor ?: if (isDark) GlassDarkCardBg else GlassLightCardBg
     val borderColor = if (isDark) GlassDarkCardBorder else GlassLightCardBorder
 
     val shape = RoundedCornerShape(cornerRadius)
@@ -46,8 +47,11 @@ fun GlassCard(
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val scale by animateFloatAsState(
-        targetValue = if (isPressed && onClick != null) 0.98f else 1f,
-        animationSpec = spring(stiffness = 300f, dampingRatio = 0.7f),
+        targetValue = if (isPressed && onClick != null) 0.975f else 1f,
+        animationSpec = spring(
+            dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+            stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+        ),
         label = "cardScale"
     )
 
@@ -73,7 +77,7 @@ fun GlassCard(
                 spotColor = Color.Black.copy(alpha = 0.22f)
             )
             .clip(shape)
-            .background(backgroundColor, shape)
+            .background(effectiveBg, shape)
             .border(width = borderWidth, brush = shineBrush, shape = shape)
             .then(
                 if (onClick != null) {

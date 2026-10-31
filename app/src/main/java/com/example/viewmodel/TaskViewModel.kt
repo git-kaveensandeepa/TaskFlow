@@ -104,12 +104,32 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
             initialValue = emptyList()
         )
 
-        // Seed initial example tasks if first run
+        // Seed initial example tasks only once on first run and clean up any existing duplicates
+        val prefs = application.getSharedPreferences("taskflow_prefs", android.content.Context.MODE_PRIVATE)
+        val hasSeeded = prefs.getBoolean("has_seeded_sample_tasks_v2", false)
+
         viewModelScope.launch {
-            allTasks.collect { list ->
-                if (list.isEmpty()) {
+            if (!hasSeeded) {
+                val current = repository.allTasks.first()
+                if (current.isEmpty()) {
                     seedSampleData()
                 }
+                prefs.edit().putBoolean("has_seeded_sample_tasks_v2", true).apply()
+            }
+            cleanupDuplicateTasks()
+        }
+    }
+
+    private suspend fun cleanupDuplicateTasks() {
+        val currentTasks = repository.allTasks.first()
+        val seenSignatures = mutableSetOf<String>()
+        currentTasks.forEach { item ->
+            val sig = "${item.task.title.trim()}_${item.task.category.trim()}_${item.task.recurrence.name}"
+            if (seenSignatures.contains(sig)) {
+                NotificationHelper.cancelTaskReminder(getApplication(), item.task.id)
+                repository.deleteTask(item.task)
+            } else {
+                seenSignatures.add(sig)
             }
         }
     }

@@ -74,17 +74,28 @@ fun TaskBoardScreen(
                     TaskStatus.DONE -> Color(0xFF10B981)
                 }
 
+                val animatedTabBg by androidx.compose.animation.animateColorAsState(
+                    targetValue = if (isSelected) badgeColor.copy(alpha = 0.25f)
+                    else MaterialTheme.colorScheme.surface.copy(alpha = 0.15f),
+                    label = "tabBg"
+                )
+                val animatedTabBorder by androidx.compose.animation.animateColorAsState(
+                    targetValue = if (isSelected) badgeColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                    label = "tabBorder"
+                )
+                val animatedTextColor by androidx.compose.animation.animateColorAsState(
+                    targetValue = if (isSelected) badgeColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = "tabTextColor"
+                )
+
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(
-                            if (isSelected) badgeColor.copy(alpha = 0.25f)
-                            else MaterialTheme.colorScheme.surface.copy(alpha = 0.15f)
-                        )
+                        .background(animatedTabBg)
                         .border(
                             1.dp,
-                            if (isSelected) badgeColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+                            animatedTabBorder,
                             RoundedCornerShape(16.dp)
                         )
                         .clickable {
@@ -98,7 +109,7 @@ fun TaskBoardScreen(
                             text = statusTitle,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (isSelected) badgeColor else MaterialTheme.colorScheme.onSurfaceVariant
+                            color = animatedTextColor
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Box(
@@ -184,7 +195,7 @@ fun TaskBoardScreen(
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(12.dp),
-                        contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp)
+                        contentPadding = PaddingValues(top = 12.dp, bottom = 130.dp)
                     ) {
                         itemsIndexed(
                             items = columnTasks,

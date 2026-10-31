@@ -38,9 +38,10 @@ fun GlassTextField(
     keyboardActions: KeyboardActions = KeyboardActions.Default
 ) {
     val isDark = MaterialTheme.colorScheme.background.red < 0.2f
-    val bgAlpha = if (isDark) 0.15f else 0.45f
-    val borderColor = if (isDark) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+    val textFieldBg = if (isDark) androidx.compose.ui.graphics.Color(0xFF0F172A).copy(alpha = 0.85f)
+    else androidx.compose.ui.graphics.Color(0xFFF1F5F9)
+    val borderColor = if (isDark) MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
+    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
 
     val shape = RoundedCornerShape(16.dp)
 
@@ -48,7 +49,7 @@ fun GlassTextField(
         modifier = modifier
             .testTag(testTag)
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = bgAlpha))
+            .background(textFieldBg)
             .border(1.dp, borderColor, shape)
             .padding(horizontal = 14.dp, vertical = 12.dp)
     ) {

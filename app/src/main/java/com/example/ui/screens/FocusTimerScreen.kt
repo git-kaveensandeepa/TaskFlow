@@ -1,7 +1,9 @@
 package com.example.ui.screens
 
 import android.os.Vibrator
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,7 +19,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +56,27 @@ fun FocusTimerScreen(
 
     var selectedTaskForFocus by remember { mutableStateOf<TaskWithSubTasks?>(null) }
 
+    // Breathing pulse glow animation when running
+    val infiniteTransition = rememberInfiniteTransition(label = "timerPulse")
+    val pulseGlow by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = if (isRunning) 0.65f else 0.2f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseGlow"
+    )
+    val pulseRingScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = if (isRunning) 1.035f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pulseRingScale"
+    )
+
     // Synchronize timer when mode changes
     LaunchedEffect(selectedMode) {
         isRunning = false
@@ -76,16 +103,24 @@ fun FocusTimerScreen(
     }
 
     val progress = if (totalSeconds > 0) secondsRemaining.toFloat() / totalSeconds.toFloat() else 0f
-    val animatedProgress by animateFloatAsState(targetValue = progress, label = "timerProgress")
+    val animatedProgress by animateFloatAsState(
+        targetValue = progress,
+        animationSpec = tween(500, easing = FastOutSlowInEasing),
+        label = "timerProgress"
+    )
 
     val minutes = secondsRemaining / 60
     val seconds = secondsRemaining % 60
     val timeFormatted = String.format("%02d:%02d", minutes, seconds)
 
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(horizontal = 16.dp)
+            .padding(bottom = 130.dp)
             .testTag("focus_timer_screen"),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -98,6 +133,11 @@ fun FocusTimerScreen(
         ) {
             PomodoroMode.values().forEach { mode ->
                 val isSelected = selectedMode == mode
+                val animatedColor by animateColorAsState(
+                    targetValue = if (isSelected) mode.color else MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = "modeColor"
+                )
+
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -121,7 +161,7 @@ fun FocusTimerScreen(
                         text = mode.label,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) mode.color else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = animatedColor
                     )
                 }
             }
@@ -185,43 +225,74 @@ fun FocusTimerScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Big Glass Timer Ring
-        GlassCard(
-            cornerRadius = 32.dp,
-            elevation = 12.dp,
-            modifier = Modifier
-                .size(260.dp)
-                .testTag("timer_ring_card")
-        ) {
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.fillMaxSize()
-            ) {
-                CircularProgressIndicator(
-                    progress = { animatedProgress },
-                    modifier = Modifier.fillMaxSize(),
-                    color = selectedMode.color,
-                    strokeWidth = 12.dp,
-                    trackColor = selectedMode.color.copy(alpha = 0.15f)
+        // Big Glass Timer Ring with Pulsing Glow Animation
+        Box(contentAlignment = Alignment.Center) {
+            // Breathing Glow halo
+            if (isRunning) {
+                Box(
+                    modifier = Modifier
+                        .size(280.dp)
+                        .graphicsLayer {
+                            scaleX = pulseRingScale
+                            scaleY = pulseRingScale
+                            alpha = pulseGlow
+                        }
+                        .clip(CircleShape)
+                        .background(
+                            Brush.radialGradient(
+                                colors = listOf(
+                                    selectedMode.color.copy(alpha = 0.45f),
+                                    selectedMode.color.copy(alpha = 0.12f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
                 )
+            }
 
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+            GlassCard(
+                cornerRadius = 32.dp,
+                elevation = 12.dp,
+                modifier = Modifier
+                    .size(260.dp)
+                    .graphicsLayer {
+                        if (isRunning) {
+                            scaleX = pulseRingScale
+                            scaleY = pulseRingScale
+                        }
+                    }
+                    .testTag("timer_ring_card")
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
                 ) {
-                    Text(
-                        text = timeFormatted,
-                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 48.sp),
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = selectedMode.label.uppercase(),
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
+                    CircularProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.fillMaxSize(),
                         color = selectedMode.color,
-                        letterSpacing = 1.sp
+                        strokeWidth = 12.dp,
+                        trackColor = selectedMode.color.copy(alpha = 0.15f)
                     )
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = timeFormatted,
+                            style = MaterialTheme.typography.displayLarge.copy(fontSize = 48.sp),
+                            fontWeight = FontWeight.ExtraBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = selectedMode.label.uppercase(),
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = selectedMode.color,
+                            letterSpacing = 1.sp
+                        )
+                    }
                 }
             }
         }
